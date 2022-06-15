@@ -3,6 +3,7 @@ from json import load, dump
 from os import getenv
 from os.path import getsize, isfile, expanduser
 from hashlib import md5, sha1, sha224, sha256, sha384, sha512
+from typing import Optional, Union
 from threading import Thread
 from pyperclip import copy
 from webbrowser import open_new_tab
@@ -27,8 +28,8 @@ def get_settings_path() -> str:
         directory = expanduser("~")
     elif _os == 3:
         directory = f"{expanduser('~')}/Library/Application Support"
-    elif _os == 4:
-        directory = ""
+    else:
+        directory = getenv("HOME")
 
     return f"{directory}/hashr.json" if _os != 2 else f"{directory}/.hashr.json"
 
@@ -134,7 +135,7 @@ def select_algorithm(tab : int) -> None:
 
     check_tab_1() if tab == 1 else check_tab_2()
 
-def get_hash(path : str, algorithm : int, progress : list[Progressbar, Label] | None, tab : int) -> str:
+def get_hash(path : str, algorithm : int, progress : Optional[tuple[Progressbar,Label]], tab : int) -> str:  # type: ignore
     global cancelled_1, hash_1
     global cancelled_2, hash_2
 
@@ -162,7 +163,7 @@ def get_hash(path : str, algorithm : int, progress : list[Progressbar, Label] | 
                     message="The selected file doesn't exist anymore, the process is cancelled.",
                     duration=5000,
                     alert=True
-                ).show_toast()
+                ).show_toast() or ""
 
             if tab == 1:
                 if cancelled_1:
@@ -170,14 +171,14 @@ def get_hash(path : str, algorithm : int, progress : list[Progressbar, Label] | 
 
                     hash_1 = "Cancelled"
 
-                    return
+                    return ""
             elif tab == 2:
                 if cancelled_2:
                     file.close()
 
                     hash_2 = "Cancelled"
 
-                    return
+                    return ""
 
             chunk = file.read(chunk_size)
 
@@ -187,6 +188,7 @@ def get_hash(path : str, algorithm : int, progress : list[Progressbar, Label] | 
             _hash.update(chunk)
 
             if progress:
+                progress: tuple[Progressbar,Label] = progress  # type: ignore
                 progress[0].config(value=file.tell() / getsize(path) * 100)
                 progress[1].config(text=f"{int(progress[0]['value'])}%")
 
@@ -423,9 +425,9 @@ TABS_GEOMETRIES = {
 
 _os = get_os()
 
-settings_path = get_settings_path()
+settings_path: str = get_settings_path()
 
-settings_data = get_settings()
+settings_data: dict[str, object] = get_settings()  # type: ignore
 
 hash_1 = None
 hash_2 = None
